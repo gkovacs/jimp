@@ -2423,14 +2423,79 @@ Jimp.prototype.write = function (path, cb) {
     return this;
 };
 
-if (process.env.ENVIRONMENT === "BROWSER") {
-    // For use in a web browser or web worker
-    var gl;
-    if (typeof window == "object") gl = window;
-    if (typeof self == "object") gl = self;
+(function(){
+    
+    function fetchImageDataFromUrl(url, cb) {
+        // Fetch image data via xhr. Note that this will not work
+        // without cross-domain allow-origin headers because of CORS restrictions
+        var xhr = new XMLHttpRequest();
+        xhr.open( "GET", url, true );
+        xhr.responseType = "arraybuffer";
+        xhr.onload = function() {
+            if (xhr.status < 400) cb(this.response,null);
+            else cb(null,"HTTP Status " + xhr.status + " for url "+url);
+        };
+        xhr.onerror = function(e){
+            cb(null,e);
+        };
 
-    gl.Jimp = Jimp;
-    gl.Buffer = Buffer;
-} else {
-    module.exports = Jimp;
-}
+        xhr.send();
+    };
+    
+    function bufferFromArrayBuffer(arrayBuffer) {
+        // Prepare a Buffer object from the arrayBuffer. Necessary in the browser > node conversion,
+        // But this function is not useful when running in node directly
+        var buffer = new Buffer(arrayBuffer.byteLength);
+        var view = new Uint8Array(arrayBuffer);
+        for (var i = 0; i < buffer.length; ++i) {
+            buffer[i] = view[i];
+        }
+
+        return buffer;
+    }
+    
+    function isArrayBuffer(test) {
+        return Object.prototype.toString.call(test).toLowerCase().indexOf("arraybuffer") > -1;
+    }
+
+    // delete the write method
+    delete Jimp.prototype.write;
+    
+    // Override the nodejs implementation of Jimp.read()
+    delete Jimp.read;
+    Jimp.read = function(src, cb) {
+        return new Promise(function(resolve, reject) {
+                cb = cb || function(err, image) {
+                    if (err) reject(err);
+                    else resolve(image);
+                };
+
+                if ("string" == typeof src) {
+                    // Download via xhr
+                    fetchImageDataFromUrl(src,function(arrayBuffer,error){
+                        if (arrayBuffer) {
+                            if (!isArrayBuffer(arrayBuffer)) {
+                                cb(new Error("Unrecognized data received for " + src));
+                            } else {
+                                new Jimp(bufferFromArrayBuffer(arrayBuffer),cb);
+                            }
+                        } else if (error) {
+                            cb(error);
+                        }
+                    });
+                } else if (isArrayBuffer(src)) {
+                    // src is an ArrayBuffer already
+                    new Jimp(bufferFromArrayBuffer(src), cb);
+                } else {
+                    // src is not a string or ArrayBuffer
+                    cb(new Error("Jimp expects a single ArrayBuffer or image URL"));
+                }
+        });
+    }
+    
+})();
+
+module.exports = Jimp;
+
+
+
