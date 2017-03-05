@@ -45,9 +45,6 @@ if (process.env.ENVIRONMENT !== "BROWSER") {
     }
 }
 
-// polyfill Promise for Node < 0.12
-var Promise = global.Promise || require('es6-promise').Promise;
-
 // logging methods
 
 var chars = 0;
