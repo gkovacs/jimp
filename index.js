@@ -1,4 +1,3 @@
-if (process.env.ENVIRONMENT !== "BROWSER") var FS = require("fs");
 var PNG = require("pngjs").PNG;
 var JPEG = require("jpeg-js");
 var BMP = require("bmp-js");
@@ -17,51 +16,23 @@ var URLRegEx = require("url-regex");
 var BMFont = require("load-bmfont");
 var Path = require("path");
 
-if (process.env.ENVIRONMENT !== "BROWSER") {
-    //If we run into electron renderer process, use XHR method instead of Request node module
-    if (process.versions.hasOwnProperty('electron') && process.type === 'renderer' && typeof XMLHttpRequest === "function") {
-        var Request = function (url,cb) {
-            var xhr = new XMLHttpRequest();
-            xhr.open( "GET", url, true );
-            xhr.responseType = "arraybuffer";
-            xhr.onload = function() {
-                if (xhr.status < 400) {
-                    try {
-                        var data = Buffer.from(this.response);
-                    } catch (e) {
-                        return cb("Response is not a buffer for url "+url)
-                    }
-                    cb(null, xhr, data);
-                }
-                else cb("HTTP Status " + xhr.status + " for url "+url);
-            };
-            xhr.onerror = function(e) {
-                cb(e);
-            };
-            xhr.send();
-        };
-    } else {
-        var Request = require('request').defaults({ encoding: null });
-    }
-}
-
 // logging methods
 
 var chars = 0;
 
 function log(msg) {
     clear();
-    process.stdout.write(msg);
+    //process.stdout.write(msg);
     chars = msg.length;
 }
 
 function clear() {
-    while (chars-- > 0) {
-        process.stdout.write("\b");
-    }
+    //while (chars-- > 0) {
+    //    process.stdout.write("\b");
+    //}
 }
 
-process.on("exit", clear);
+//process.on("exit", clear);
 
 // no operation
 function noop(){};
